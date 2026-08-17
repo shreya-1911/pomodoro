@@ -1,4 +1,4 @@
-# Quiet Timer — a calm Pomodoro timer
+# Quiet Timer: a calm Pomodoro timer
 
 A single-file Pomodoro timer built as one self-contained HTML page. No installs, no build step — just open it in a browser.
 
