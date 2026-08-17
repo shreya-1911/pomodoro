@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Focus / Rest — a quiet timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500&family=Newsreader:ital,wght@0,400;1,400;1,500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* ---- Focus palette ---- */
+    --focus-bg-1: #EEF3EF;
+    --focus-bg-2: #E1EBE4;
+    --focus-accent: #3F6D5D;
+    --focus-accent-soft: #B9CFC4;
+    --focus-text: #22312B;
+    --focus-text-soft: #62726A;
+
+    /* ---- Rest palette ---- */
+    --rest-bg-1: #FBF2E6;
+    --rest-bg-2: #F5E6D3;
+    --rest-accent: #B97A4A;
+    --rest-accent-soft: #E4C6A8;
+    --rest-text: #3A2C1F;
+    --rest-text-soft: #8A7157;
+
+    --bg-1: var(--focus-bg-1);
+    --bg-2: var(--focus-bg-2);
+    --accent: var(--focus-accent);
+    --accent-soft: var(--focus-accent-soft);
+    --text: var(--focus-text);
+    --text-soft: var(--focus-text-soft);
+
+    --ring-track: rgba(0,0,0,0.06);
+    --transition-speed: 1.1s;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html, body{
+    margin: 0;
+    height: 100%;
+  }
+
+  body{
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Grotesk', sans-serif;
+    color: var(--text);
+    background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 100%);
+    transition: background var(--transition-speed) ease, color var(--transition-speed) ease;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ambient drifting light — quiet, not decorative-for-decoration's-sake:
+     it stands in for the passage of time in the background */
+  .glow{
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(70px);
+    opacity: 0.5;
+    background: var(--accent-soft);
+    transition: background var(--transition-speed) ease;
+    pointer-events: none;
+  }
+  .glow--a{ width: 380px; height: 380px; top: -120px; left: -100px; animation: drift-a 26s ease-in-out infinite; }
+  .glow--b{ width: 300px; height: 300px; bottom: -100px; right: -80px; animation: drift-b 32s ease-in-out infinite; }
+
+  @keyframes drift-a{
+    0%, 100% { transform: translate(0,0); }
+    50% { transform: translate(40px, 30px); }
+  }
+  @keyframes drift-b{
+    0%, 100% { transform: translate(0,0); }
+    50% { transform: translate(-30px, -40px); }
+  }
+
+  main{
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 34px;
+    padding: 24px;
+  }
+
+  .eyebrow{
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 1.15rem;
+    letter-spacing: 0.02em;
+    color: var(--text-soft);
+    transition: color var(--transition-speed) ease;
+    min-height: 1.4em;
+  }
+
+  .ring-wrap{
+    position: relative;
+    width: 300px;
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .breathe{
+    animation: breathe 8s ease-in-out infinite;
+    transform-origin: center;
+  }
+
+  @keyframes breathe{
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.025); }
+  }
+
+  svg.progress-ring{
+    transform: rotate(-90deg);
+    width: 300px;
+    height: 300px;
+  }
+
+  .progress-ring__track{
+    fill: none;
+    stroke: var(--ring-track);
+    stroke-width: 3;
+  }
+
+  .progress-ring__fill{
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 3;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s linear, stroke var(--transition-speed) ease;
+  }
+
+  .ring-center{
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .time{
+    font-size: 3.6rem;
+    font-weight: 300;
+    letter-spacing: 0.01em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .phase-caption{
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+    font-size: 0.95rem;
+    color: var(--text-soft);
+    transition: color var(--transition-speed) ease;
+  }
+
+  .dots{
+    display: flex;
+    gap: 10px;
+  }
+
+  .dot{
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ring-track);
+    transition: background var(--transition-speed) ease;
+  }
+
+  .dot.filled{
+    background: var(--accent);
+  }
+
+  .controls{
+    display: flex;
+    gap: 14px;
+  }
+
+  button{
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.92rem;
+    letter-spacing: 0.03em;
+    padding: 12px 26px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    background: var(--accent);
+    color: var(--bg-1);
+    transition: background var(--transition-speed) ease, color var(--transition-speed) ease,
+                transform 0.15s ease, opacity 0.2s ease;
+  }
+
+  button:hover{ transform: translateY(-1px); opacity: 0.92; }
+  button:active{ transform: translateY(0px); opacity: 1; }
+
+  button.secondary{
+    background: transparent;
+    color: var(--text-soft);
+    border: 1px solid var(--ring-track);
+  }
+
+  button:focus-visible{
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  .hint{
+    font-size: 0.78rem;
+    color: var(--text-soft);
+    opacity: 0.75;
+    letter-spacing: 0.02em;
+    transition: color var(--transition-speed) ease;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .glow, .breathe{ animation: none; }
+  }
+
+  @media (max-width: 400px){
+    .ring-wrap, svg.progress-ring{ width: 250px; height: 250px; }
+    .time{ font-size: 2.9rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="glow glow--a"></div>
+<div class="glow glow--b"></div>
+
+<main>
+  <div class="eyebrow" id="eyebrow">a quiet stretch of focus</div>
+
+  <div class="ring-wrap">
+    <div class="breathe" id="breatheWrap">
+      <svg class="progress-ring" viewBox="0 0 300 300">
+        <circle class="progress-ring__track" cx="150" cy="150" r="138"></circle>
+        <circle class="progress-ring__fill" id="ringFill" cx="150" cy="150" r="138"></circle>
+      </svg>
+    </div>
+    <div class="ring-center">
+      <div class="time" id="timeDisplay">25:00</div>
+      <div class="phase-caption" id="phaseCaption">Focus</div>
+    </div>
+  </div>
+
+  <div class="dots" id="dots"></div>
+
+  <div class="controls">
+    <button id="startPauseBtn">Start</button>
+    <button id="resetBtn" class="secondary">Reset</button>
+  </div>
+
+  <div class="hint" id="hint">25 minutes of focus, then 5 minutes to rest</div>
+</main>
+
+<script>
+(function(){
+  const FOCUS_SECONDS = 25 * 60;
+  const REST_SECONDS = 5 * 60;
+  const RADIUS = 138;
+  const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+  const ringFill = document.getElementById('ringFill');
+  const timeDisplay = document.getElementById('timeDisplay');
+  const phaseCaption = document.getElementById('phaseCaption');
+  const eyebrow = document.getElementById('eyebrow');
+  const startPauseBtn = document.getElementById('startPauseBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const dotsWrap = document.getElementById('dots');
+  const hint = document.getElementById('hint');
+  const root = document.documentElement;
+
+  ringFill.style.strokeDasharray = CIRCUMFERENCE;
+  ringFill.style.strokeDashoffset = 0;
+
+  let phase = 'focus';       // 'focus' | 'rest'
+  let secondsLeft = FOCUS_SECONDS;
+  let totalForPhase = FOCUS_SECONDS;
+  let running = false;
+  let intervalId = null;
+  let completedPomodoros = 0;
+
+  const eyebrowText = {
+    focus: 'a quiet stretch of focus',
+    rest: 'set it down for a moment'
+  };
+  const hintText = {
+    focus: '25 minutes of focus, then 5 minutes to rest',
+    rest: '5 minutes to rest, then back to focus'
+  };
+
+  function renderDots(){
+    dotsWrap.innerHTML = '';
+    const shown = completedPomodoros % 4;
+    for(let i = 0; i < 4; i++){
+      const d = document.createElement('div');
+      d.className = 'dot' + (i < shown ? ' filled' : '');
+      dotsWrap.appendChild(d);
+    }
+  }
+
+  function applyPalette(next){
+    if(next === 'rest'){
+      root.style.setProperty('--bg-1', 'var(--rest-bg-1)');
+      root.style.setProperty('--bg-2', 'var(--rest-bg-2)');
+      root.style.setProperty('--accent', 'var(--rest-accent)');
+      root.style.setProperty('--accent-soft', 'var(--rest-accent-soft)');
+      root.style.setProperty('--text', 'var(--rest-text)');
+      root.style.setProperty('--text-soft', 'var(--rest-text-soft)');
+    } else {
+      root.style.setProperty('--bg-1', 'var(--focus-bg-1)');
+      root.style.setProperty('--bg-2', 'var(--focus-bg-2)');
+      root.style.setProperty('--accent', 'var(--focus-accent)');
+      root.style.setProperty('--accent-soft', 'var(--focus-accent-soft)');
+      root.style.setProperty('--text', 'var(--focus-text)');
+      root.style.setProperty('--text-soft', 'var(--focus-text-soft)');
+    }
+  }
+
+  function formatTime(s){
+    const m = Math.floor(s / 60).toString().padStart(2, '0');
+    const sec = Math.floor(s % 60).toString().padStart(2, '0');
+    return m + ':' + sec;
+  }
+
+  function updateDisplay(){
+    timeDisplay.textContent = formatTime(secondsLeft);
+    phaseCaption.textContent = phase === 'focus' ? 'Focus' : 'Rest';
+    eyebrow.textContent = eyebrowText[phase];
+    hint.textContent = hintText[phase];
+    const progress = 1 - (secondsLeft / totalForPhase);
+    ringFill.style.strokeDashoffset = CIRCUMFERENCE * (1 - progress);
+    document.title = (running ? formatTime(secondsLeft) + ' · ' : '') +
+      (phase === 'focus' ? 'Focus' : 'Rest') + ' — quiet timer';
+  }
+
+  // --- gentle chime via Web Audio API, no external asset needed ---
+  let audioCtx = null;
+  function ensureAudio(){
+    if(!audioCtx){
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  function playChime(kind){
+    ensureAudio();
+    const now = audioCtx.currentTime;
+    const notes = kind === 'rest-start' ? [523.25, 659.25] : [659.25, 523.25]; // C5,E5 / E5,C5
+    notes.forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const start = now + i * 0.22;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.18, start + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 1.3);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(start);
+      osc.stop(start + 1.4);
+    });
+  }
+
+  function switchPhase(){
+    if(phase === 'focus'){
+      completedPomodoros += 1;
+      phase = 'rest';
+      secondsLeft = REST_SECONDS;
+      totalForPhase = REST_SECONDS;
+      playChime('rest-start');
+    } else {
+      phase = 'focus';
+      secondsLeft = FOCUS_SECONDS;
+      totalForPhase = FOCUS_SECONDS;
+      playChime('focus-start');
+    }
+    applyPalette(phase);
+    renderDots();
+    updateDisplay();
+  }
+
+  function tick(){
+    secondsLeft -= 1;
+    if(secondsLeft <= 0){
+      switchPhase();
+    } else {
+      updateDisplay();
+    }
+  }
+
+  function start(){
+    if(running) return;
+    ensureAudio();
+    running = true;
+    startPauseBtn.textContent = 'Pause';
+    intervalId = setInterval(tick, 1000);
+  }
+
+  function pause(){
+    running = false;
+    startPauseBtn.textContent = 'Start';
+    clearInterval(intervalId);
+    updateDisplay();
+  }
+
+  function reset(){
+    pause();
+    phase = 'focus';
+    secondsLeft = FOCUS_SECONDS;
+    totalForPhase = FOCUS_SECONDS;
+    completedPomodoros = 0;
+    applyPalette(phase);
+    renderDots();
+    updateDisplay();
+  }
+
+  startPauseBtn.addEventListener('click', () => {
+    if(running) pause(); else start();
+  });
+  resetBtn.addEventListener('click', reset);
+
+  renderDots();
+  updateDisplay();
+})();
+</script>
+
+</body>
+</html>
